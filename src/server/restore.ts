@@ -95,6 +95,15 @@ export async function restoreTrash(db: PrismaClient, u: SessionUser, trashId: st
           await tx.section.update({ where: { id: sectionId }, data: { rev: { increment: 1 } } });
           break;
         }
+        case 'tmzentry': {
+          const r = p.row as Row;
+          const rm = await tx.tmzRoom.upsert({ where: { buildingId_name: { buildingId: p.buildingId, name: p.roomName } }, update: {}, create: { buildingId: p.buildingId, name: p.roomName } });
+          const n = await tx.tmzEntry.createMany({ data: [{ id: r.id, roomId: rm.id, name: r.name, unit: r.unit, good: r.good, bad: r.bad, updatedBy: r.updatedBy }], skipDuplicates: true });
+          if (n.count) restored = 1;
+          else skipped = 1;
+          await tx.tmzRoom.update({ where: { id: rm.id }, data: { rev: { increment: 1 } } });
+          break;
+        }
         default:
           throw bad('bad_kind');
       }

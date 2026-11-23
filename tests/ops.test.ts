@@ -122,3 +122,17 @@ describe('skan', () => {
     expect(await db.trashEntry.count({ where: { kind: 'found' } })).toBe(1);
   });
 });
+
+describe('TMZ', () => {
+  it('+/- son bo\'yicha sanash, manfiy bo\'lmaydi, qayta yuborilsa ikki marta qo\'shilmaydi', async () => {
+    await op(k1, 'tmz_delta', { buildingId: bId, room: '12', name: 'Matras', unit: 'dona', dGood: 5, dBad: 1 }, 't1');
+    await op(k1, 'tmz_delta', { buildingId: bId, room: '12', name: 'Matras', unit: 'dona', dGood: 5, dBad: 1 }, 't1');
+    await op(k2, 'tmz_delta', { buildingId: bId, room: '12', name: 'Matras', unit: 'dona', dGood: 2, dBad: -3 });
+    const e = await db.tmzEntry.findFirstOrThrow();
+    expect([e.good, e.bad]).toEqual([7, 0]);
+    const r = await op(outsider, 'tmz_delta', { buildingId: bId, room: '12', name: 'Matras', unit: 'dona', dGood: 1 });
+    expect(r.result.status).toBe('rejected');
+    await op(k1, 'tmz_room_done', { buildingId: bId, room: '12' });
+    expect((await db.tmzRoom.findFirstOrThrow()).status).toBe('DONE');
+  });
+});
