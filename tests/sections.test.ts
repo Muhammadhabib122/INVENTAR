@@ -155,3 +155,27 @@ describe('cheklovlar', () => {
     await expect(commitNew(db, other, a.draftId)).rejects.toThrow();
   });
 });
+
+describe('Savat', () => {
+  it("tozalangan natijalar va o'chirilgan bo'lim savatdan tiklanadi", async () => {
+    const { restoreTrash } = await import('@/server/restore');
+    const A = await uploadNew('A.xlsx', 46000000, 10);
+    await scanFound(A.sectionId, '46000001');
+    await scanFound(A.sectionId, '46000002');
+    await clearSection(db, admin, A.sectionId);
+    expect(await db.found.count()).toBe(0);
+    // tozalashdan keyin yangi skan qilingan bo'lsa — tiklashda ustiga yozilmaydi
+    await scanFound(A.sectionId, '46000002');
+    const tr = await db.trashEntry.findFirstOrThrow({ where: { kind: 'clear' } });
+    const r = await restoreTrash(db, admin, tr.id);
+    expect(r).toEqual({ restored: 1, skipped: 1 });
+    expect(await db.found.count({ where: { sectionId: A.sectionId } })).toBe(2);
+    await expect(restoreTrash(db, admin, tr.id)).rejects.toThrow();
+
+    await deleteSection(db, admin, A.sectionId);
+    expect(await listSections(db, admin)).toHaveLength(0);
+    const ts = await db.trashEntry.findFirstOrThrow({ where: { kind: 'section' } });
+    await restoreTrash(db, admin, ts.id);
+    expect((await listSections(db, admin))[0]).toMatchObject({ id: A.sectionId, found: 2 });
+  });
+});

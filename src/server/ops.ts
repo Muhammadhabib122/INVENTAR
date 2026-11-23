@@ -186,7 +186,8 @@ async function cancel(tx: Tx, u: SessionUser, p: Record<string, unknown>): Promi
   else throw bad('bad_kind');
   if (!row) return { status: 'gone' };
   await assertOpen(tx, sectionId, row.roomId);
-  await toTrash(tx, u, kind, label(row), { table: kind, row }, sectionId);
+  const roomRow = await tx.room.findUnique({ where: { id: row.roomId } });
+  await toTrash(tx, u, kind, label(row), { table: kind, row, roomName: roomRow?.name ?? '' }, sectionId);
   if (kind === 'found') await tx.found.delete({ where: { id } });
   if (kind === 'extra') await tx.extra.delete({ where: { id } });
   if (kind === 'dup') await tx.duplicate.delete({ where: { id } });
