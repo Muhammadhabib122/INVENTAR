@@ -115,11 +115,12 @@ table.t td.n,table.t th.n{text-align:right;white-space:nowrap}
   body{background:#fff;padding:0}
   .np,.top,.nav,.toast{display:none!important}
   main{padding:0;max-width:none}
-  .sheet{break-after:page;margin:0;padding:0;gap:0;height:279mm;align-content:start}
+  .sheet{break-after:page;margin:0;padding:0;gap:0;height:279mm;align-content:stretch}
   .sheet:last-child{break-after:auto}
-  .s48{grid-template-rows:repeat(12,1fr)}.s24{grid-template-rows:repeat(8,1fr)}.s12{grid-template-rows:repeat(6,1fr)}
-  .lb{display:flex;flex-direction:column;justify-content:center}
-  .s48 .lb svg{max-width:17mm}.s24 .lb svg{max-width:24mm}.s12 .lb svg{max-width:32mm}
+  .s48{grid-template-rows:repeat(12,minmax(0,1fr))}.s24{grid-template-rows:repeat(8,minmax(0,1fr))}.s12{grid-template-rows:repeat(6,minmax(0,1fr))}
+  .lb{display:flex;flex-direction:column;justify-content:center;padding:1mm;line-height:1.15;min-height:0}
+  .s48 .lb{font-size:7.5pt}.s24 .lb{font-size:9pt}.s12 .lb{font-size:11pt}
+  .s48 .lb svg{max-width:15mm}.s24 .lb svg{max-width:23mm}.s12 .lb svg{max-width:32mm}
 }
 .login{max-width:380px;margin:12vh auto 0;padding:0 16px}
 .login h1{font-size:22px;margin-bottom:4px}
