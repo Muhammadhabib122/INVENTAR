@@ -335,6 +335,8 @@ export const lat = {
   print_all: 'Hammasini chop etish',
   print_failed: 'Chop etish ochilmadi. Brauzer menyusidan «Chop etish»ni tanlang',
   labels_h: "QR ichida faqat inventar raqam bo'ladi. A4 varaq, chekkalari 8 mm. Chop etishda «Masshtab: 100%» ni tanlang.",
+  failed_drop_q: "Bu yozuv telefondan o'chirilsinmi?",
+  failed_n: 'Qabul qilinmagan: {n}',
   // xato kodlari
   e_required: "Majburiy maydonlarni to'ldiring",
   e_password_short: "Parol kamida 8 belgidan iborat bo'lsin",
@@ -665,6 +667,8 @@ export const cyr: Partial<Record<MsgKey, string>> = {
   print_all: "Ҳаммасини чоп этиш",
   print_failed: "Чоп этиш очилмади. Браузер менюсидан «Чоп этиш»ни танланг",
   labels_h: "QR ичида фақат инвентар рақам бўлади. А4 варақ, чеккалари 8 мм. Чоп этишда «Масштаб: 100%» ни танланг.",
+  failed_drop_q: "Бу ёзув телефондан ўчирилсинми?",
+  failed_n: "Қабул қилинмаган: {n}",
   e_required: "Мажбурий майдонларни тўлдиринг",
   e_password_short: "Парол камида 8 белгидан иборат бўлсин",
   e_old_password_bad: "Жорий парол нотўғри",

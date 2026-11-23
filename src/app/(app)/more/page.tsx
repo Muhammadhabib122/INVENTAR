@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useApp } from '@/components/AppContext';
 import { useSync } from '@/lib/sync';
+import { FailedOps } from '@/components/FailedOps';
 import type { MsgKey } from '@/lib/i18n';
 
 export default function More() {
@@ -17,6 +18,9 @@ export default function More() {
   async function logout() {
     if (pending > 0 && !(await confirm(t('logout_pending_q', { n: pending }), t('logout_pending_t'), t('logout')))) return;
     await fetch('/api/auth/logout', { method: 'POST' });
+    try {
+      for (const k of await caches.keys()) await caches.delete(k);
+    } catch {}
     location.href = '/login';
   }
   return (
@@ -28,6 +32,7 @@ export default function More() {
           {me.username} · {t(('role_' + me.role) as MsgKey)}
         </small>
       </div>
+      <FailedOps />
       <div className="grp">{t('app')}</div>
       <div className="list">
         {L('/sections', 'nav_sections')}

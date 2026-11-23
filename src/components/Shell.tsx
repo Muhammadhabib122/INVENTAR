@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useApp } from './AppContext';
 import { SyncBadge } from './SyncBadge';
 import { ContextBar } from './ContextBar';
@@ -16,6 +16,9 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: '/report', i: '▤', l: t('nav_report') },
     { href: '/more', i: '⋯', l: t('nav_more') },
   ];
+  useEffect(() => {
+    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }, []);
   const active = (h: string) => (h === '/' ? path === '/' : path.startsWith(h));
   return (
     <>

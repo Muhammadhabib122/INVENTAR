@@ -57,11 +57,15 @@ export function SyncProvider({ userId, children }: { userId: string; children: R
     while (ops.length) {
       const batch = ops.slice(0, 50);
       let res: Response;
+      const ac = new AbortController();
+      const tm = setTimeout(() => ac.abort(), 20000);
       try {
-        res = await fetch('/api/ops', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: batch }), credentials: 'same-origin', cache: 'no-store' });
+        res = await fetch('/api/ops', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ops: batch }), credentials: 'same-origin', cache: 'no-store', signal: ac.signal });
       } catch {
         setOnline(false);
         return;
+      } finally {
+        clearTimeout(tm);
       }
       if (res.status === 401) {
         setOnline(true);
@@ -101,14 +105,19 @@ export function SyncProvider({ userId, children }: { userId: string; children: R
       const op: Op = { id: uid(), type, payload, createdAt: Date.now() };
       await db.put('ops', op); // avval telefonga yozamiz
       await recount();
-      const p = new Promise<OpResult>((res) => waiters.current.set(op.id, res));
-      flush();
-      const timeout = new Promise<OpResult>((res) =>
-        setTimeout(() => {
-          res({ status: 'queued', opId: op.id });
-        }, waitMs),
+      let done: OpResult | null = null;
+      const p = new Promise<OpResult>((res) =>
+        waiters.current.set(op.id, (r) => {
+          done = r;
+          res(r);
+        }),
       );
-      return Promise.race([p, timeout]);
+      const queuedRes: OpResult = { status: 'queued', opId: op.id };
+      // yuborishga urinamiz; javob kelmasa — darhol "navbatda" deymiz (yozuv telefonda saqlangan)
+      const attempt = flush().then(() => done ?? queuedRes);
+      const timeout = new Promise<OpResult>((res) => setTimeout(() => res(done ?? queuedRes), waitMs));
+      p.catch(() => {});
+      return Promise.race([attempt, timeout]);
     },
     [db, flush, recount],
   );
