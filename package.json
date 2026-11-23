@@ -9,11 +9,11 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "node prisma/seed.mjs",
     "i18n": "tsx scripts/gen-cyr.ts"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "node prisma/seed.mjs"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",

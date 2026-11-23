@@ -1,0 +1,73 @@
+# FarDTU Inventarizatsiya: ilova + PostgreSQL + kunlik zaxira + HTTPS (Caddy)
+# Ishga tushirish: docker compose --profile https up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: inventar
+      POSTGRES_USER: inventar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env faylida POSTGRES_PASSWORD yozilmagan}
+      TZ: Asia/Tashkent
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inventar -d inventar"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://inventar:${POSTGRES_PASSWORD}@db:5432/inventar
+      TZ: Asia/Tashkent
+    depends_on:
+      db:
+        condition: service_healthy
+    # Faqat shu kompyuterdan ochiladi; tashqariga Caddy (HTTPS) orqali chiqadi
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  # Har kuni soat 02:30 da bazaning to'liq nusxasi ./backups papkasiga yoziladi
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: inventar
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: inventar
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      TZ: Asia/Tashkent
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "-c", "while true; do if [ \"$$(date +%H%M)\" = \"0230\" ]; then sh /backup.sh; sleep 61; fi; sleep 30; done"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # HTTPS: domen bo'lsa Let's Encrypt sertifikatini o'zi oladi va yangilaydi
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ["https"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - app
+
+volumes:
+  dbdata:
+  caddydata:
+  caddyconfig:

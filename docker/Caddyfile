@@ -1,0 +1,8 @@
+# DOMAIN .env faylidan olinadi (masalan, inventar.fdtu.uz)
+{$DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+	}
+	reverse_proxy app:3000
+}
