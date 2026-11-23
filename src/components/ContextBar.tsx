@@ -9,18 +9,21 @@ export function ContextBar({ showRoom = false }: { showRoom?: boolean }) {
   const { section, sectionId, room } = useCurrent();
   if (!sectionId)
     return (
-      <div className="card wa">
-        <b>{t('no_section')}</b>
-        <div className="row">
-          <Link className="btn" href="/sections">
-            {t('choose_section')}
-          </Link>
-        </div>
+      <div className="ctx done">
+        <div className="t s">{t('no_section')}</div>
+        <Link className="btn sm auto" href="/sections">
+          {t('choose_section')}
+        </Link>
       </div>
     );
-  if (!section) return <div className="card mut">{t('loading')}</div>;
+  if (!section)
+    return (
+      <div className="ctx">
+        <div className="t mut">{t('loading')}</div>
+      </div>
+    );
   return (
-    <div className={'ctx' + (section.status === 'DONE' ? ' done' : '')} style={{ margin: '0 0 10px' }}>
+    <div className={'ctx' + (section.status === 'DONE' ? ' done' : '')}>
       <div className="t">
         <div className="b">{section.buildingName}</div>
         <div className="s">

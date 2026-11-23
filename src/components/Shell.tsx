@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useApp } from './AppContext';
 import { SyncBadge } from './SyncBadge';
+import { ContextBar } from './ContextBar';
 
 export function Shell({ children }: { children: ReactNode }) {
   const { t, me } = useApp();
@@ -25,6 +26,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </h1>
           <SyncBadge />
         </div>
+        {CTX.some((x) => path.startsWith(x)) && <ContextBar showRoom={path.startsWith('/scan')} />}
       </div>
       {children}
       <nav className="nav np">
@@ -40,4 +42,5 @@ export function Shell({ children }: { children: ReactNode }) {
     </>
   );
 }
+const CTX = ['/scan', '/list', '/report', '/labels', '/done'];
 const isMore = (p: string) => ['/more', '/sections', '/labels', '/done', '/summary', '/tmz', '/admin', '/profile'].some((x) => p.startsWith(x));
