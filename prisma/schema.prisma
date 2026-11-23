@@ -1,0 +1,338 @@
+// FarDTU Inventarizatsiya — baza sxemasi.
+// Asosiy qoida: bo'limga (Section) tegishli har bir yozuvda sectionId majburiy,
+// unikal cheklovlar (bo'lim, inventar raqam) juftligi bo'yicha qo'yilgan.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  COMMISSION
+  VIEWER
+}
+
+enum Lang {
+  LAT
+  CYR
+}
+
+enum SectionStatus {
+  ACTIVE
+  DONE
+}
+
+enum RoomStatus {
+  IN_PROGRESS
+  DONE
+}
+
+enum ExtraKind {
+  NOT_IN_DB // hech bir bo'limda yo'q
+  OTHER_SECTION // boshqa bo'limda bor
+}
+
+enum Condition {
+  GOOD
+  FAIR
+  BAD
+  REPAIR
+}
+
+enum PendingReason {
+  OTHER_ROOM // boshqa xonada topilgan: joyini yangilash yoki takroriy raqam
+  OTHER_SECTION // boshqa bo'limda bor
+  NOT_IN_DB // hech bir bo'limda yo'q
+  LOCKED // xona/bo'lim yakunlangan paytda yetib kelgan (offline) skan
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String
+  fullName     String
+  role         Role      @default(COMMISSION)
+  lang         Lang      @default(LAT)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  buildings UserBuilding[]
+  sessions  Session[]
+}
+
+model Session {
+  id        String   @id // token'ning sha256 xeshi
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  key       String // "u:<login>" yoki "ip:<manzil>"
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}
+
+model Building {
+  id        String    @id @default(cuid())
+  name      String
+  note      String    @default("")
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  users    UserBuilding[]
+  sections Section[]
+  tmzRooms TmzRoom[]
+}
+
+model UserBuilding {
+  userId     String
+  buildingId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, buildingId])
+}
+
+// Bo'lim = bitta yuklangan Excel fayl
+model Section {
+  id               String        @id @default(cuid())
+  buildingId       String
+  building         Building      @relation(fields: [buildingId], references: [id])
+  name             String
+  originalFileName String
+  uploadedById     String
+  uploadedAt       DateTime      @default(now())
+  status           SectionStatus @default(ACTIVE)
+  doneAt           DateTime?
+  doneById         String?
+  importInfo       Json          @default("{}") // takrorlar, ziddiyatlar
+  rev              Int           @default(0) // har o'zgarishda oshadi (real vaqt uchun)
+  deletedAt        DateTime?
+
+  files      SectionFile[]
+  items      Item[]
+  rooms      Room[]
+  founds     Found[]
+  dups       Duplicate[]
+  extras     Extra[]
+  noInv      NoInvItem[]
+  pending    PendingScan[]
+
+  @@index([buildingId])
+}
+
+model SectionFile {
+  id         String   @id @default(cuid())
+  sectionId  String
+  section    Section  @relation(fields: [sectionId], references: [id])
+  fileName   String
+  data       Bytes
+  uploadedAt DateTime @default(now())
+  uploadedBy String
+  kind       String   @default("initial") // initial | update | csv
+
+  @@index([sectionId])
+}
+
+model Item {
+  id         String    @id @default(cuid())
+  sectionId  String
+  section    Section   @relation(fields: [sectionId], references: [id])
+  inv        String
+  name       String
+  unit       String    @default("")
+  mol        String    @default("")
+  dept       String    @default("")
+  sum        Float     @default(0)
+  ord        Int       @default(0) // fayldagi tartib
+  delistedAt DateTime? // fayl yangilanganda endi yo'q bo'lsa — "ro'yxatdan chiqarilgan"
+
+  @@unique([sectionId, inv])
+  @@index([inv])
+}
+
+model Room {
+  id        String     @id @default(cuid())
+  sectionId String
+  section   Section    @relation(fields: [sectionId], references: [id])
+  name      String
+  status    RoomStatus @default(IN_PROGRESS)
+  doneAt    DateTime?
+  doneById  String?
+  createdAt DateTime   @default(now())
+
+  @@unique([sectionId, name])
+}
+
+// Topilgan buyum. (bo'lim, inventar raqam) bo'yicha unikal — ikki kishi bir buyumni
+// bir vaqtda skanerlasa, baza faqat bittasini qabul qiladi.
+model Found {
+  id        String   @id @default(cuid())
+  sectionId String
+  section   Section  @relation(fields: [sectionId], references: [id])
+  inv       String
+  roomId    String
+  userId    String
+  at        DateTime @default(now())
+  source    String   @default("scan") // scan | manual | camera | photo | csv
+
+  @@unique([sectionId, inv])
+  @@index([sectionId, roomId])
+}
+
+// Takroriy raqam: bitta raqam ikki buyumga yopishtirilgan
+model Duplicate {
+  id        String   @id @default(cuid())
+  sectionId String
+  section   Section  @relation(fields: [sectionId], references: [id])
+  inv       String
+  roomId    String
+  userId    String
+  at        DateTime @default(now())
+
+  @@index([sectionId, inv])
+}
+
+model Extra {
+  id             String    @id @default(cuid())
+  sectionId      String
+  section        Section   @relation(fields: [sectionId], references: [id])
+  inv            String
+  kind           ExtraKind
+  otherSectionId String? // kind = OTHER_SECTION bo'lsa
+  roomId         String
+  userId         String
+  at             DateTime  @default(now())
+
+  @@unique([sectionId, inv])
+  @@index([otherSectionId, inv])
+}
+
+model NoInvItem {
+  id        String    @id @default(cuid())
+  sectionId String
+  section   Section   @relation(fields: [sectionId], references: [id])
+  roomId    String
+  name      String
+  qty       Int       @default(1)
+  condition Condition @default(GOOD)
+  note      String    @default("")
+  userId    String
+  at        DateTime  @default(now())
+
+  @@index([sectionId, roomId])
+}
+
+// Qaror talab qiladigan skan. Hech bir skan yo'qolmasligi uchun avval shu yerga yoziladi,
+// foydalanuvchi tanlov qilgach yechiladi.
+model PendingScan {
+  id         String        @id @default(cuid())
+  sectionId  String
+  section    Section       @relation(fields: [sectionId], references: [id])
+  inv        String
+  roomId     String
+  userId     String
+  at         DateTime      @default(now())
+  reason     PendingReason
+  info       Json          @default("{}")
+  resolvedAt DateTime?
+  resolution String?
+
+  @@index([sectionId, userId, resolvedAt])
+}
+
+// Telefondan kelgan har bir amal (op) ID bilan saqlanadi — qayta yuborilsa, qayta yozilmaydi
+model ClientOp {
+  id        String   @id
+  userId    String
+  type      String
+  result    Json
+  createdAt DateTime @default(now())
+}
+
+model ImportDraft {
+  id         String   @id @default(cuid())
+  userId     String
+  buildingId String?
+  sectionId  String? // CSV import uchun
+  kind       String // excel | csv
+  fileName   String
+  data       Bytes
+  parsed     Json
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  at        DateTime @default(now())
+  userId    String?
+  userName  String   @default("")
+  action    String
+  entity    String   @default("")
+  entityId  String   @default("")
+  sectionId String?
+  details   Json     @default("{}")
+
+  @@index([at])
+  @@index([sectionId])
+}
+
+// Savat: o'chirilgan narsalar shu yerga tushadi, admin tiklay oladi
+model TrashEntry {
+  id         String    @id @default(cuid())
+  kind       String // section | building | user | found | extra | dup | noinv | clear | tmzentry | tmzroom
+  label      String
+  sectionId  String?
+  payload    Json
+  deletedBy  String
+  deletedAt  DateTime  @default(now())
+  restoredAt DateTime?
+  restoredBy String?
+
+  @@index([deletedAt])
+}
+
+// ---------- TMZ (son bo'yicha sanash) ----------
+model TmzRoom {
+  id         String     @id @default(cuid())
+  buildingId String
+  building   Building   @relation(fields: [buildingId], references: [id])
+  name       String
+  status     RoomStatus @default(IN_PROGRESS)
+  doneAt     DateTime?
+  doneById   String?
+  createdAt  DateTime   @default(now())
+  rev        Int        @default(0)
+
+  entries TmzEntry[]
+
+  @@unique([buildingId, name])
+}
+
+model TmzEntry {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      TmzRoom  @relation(fields: [roomId], references: [id])
+  name      String
+  unit      String
+  good      Int      @default(0)
+  bad       Int      @default(0)
+  updatedBy String
+  updatedAt DateTime @updatedAt
+
+  @@unique([roomId, name, unit])
+}

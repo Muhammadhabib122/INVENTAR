@@ -1,0 +1,20 @@
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+# maxfiy kalitlar
+.env
+.env.*
+!.env.example
+# haqiqiy Excel/CSV fayllar (xodimlarning ism-familiyasi bor) — hech qachon git'ga qo'shilmasin
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+!tests/fixtures/*.csv
+# zaxira nusxalar
+backups/
+*.sql.gz
+*.dump
+test-results/

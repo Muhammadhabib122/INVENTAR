@@ -1,0 +1,43 @@
+'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import type { ReactNode } from 'react';
+import { useApp } from './AppContext';
+import { SyncBadge } from './SyncBadge';
+
+export function Shell({ children }: { children: ReactNode }) {
+  const { t, me } = useApp();
+  const path = usePathname();
+  const items = [
+    { href: '/', i: '⌂', l: t('nav_home') },
+    ...(me.role !== 'VIEWER' ? [{ href: '/scan', i: '⌗', l: t('nav_scan') }] : []),
+    { href: '/list', i: '☰', l: t('nav_list') },
+    { href: '/report', i: '▤', l: t('nav_report') },
+    { href: '/more', i: '⋯', l: t('nav_more') },
+  ];
+  const active = (h: string) => (h === '/' ? path === '/' : path.startsWith(h));
+  return (
+    <>
+      <div className="top np">
+        <div className="r1">
+          <h1>
+            {t('univ')} · {t('app')}
+          </h1>
+          <SyncBadge />
+        </div>
+      </div>
+      {children}
+      <nav className="nav np">
+        {items.map((x) => (
+          <Link key={x.href} href={x.href} className={active(x.href) || (x.href === '/more' && isMore(path)) ? 'on' : ''}>
+            <span className="i" aria-hidden>
+              {x.i}
+            </span>
+            {x.l}
+          </Link>
+        ))}
+      </nav>
+    </>
+  );
+}
+const isMore = (p: string) => ['/more', '/sections', '/labels', '/done', '/summary', '/tmz', '/admin', '/profile'].some((x) => p.startsWith(x));
